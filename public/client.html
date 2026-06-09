@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cliente Web PTT</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #07080f;
+            --surface: rgba(255,255,255,0.04);
+            --surface-strong: rgba(255,255,255,0.08);
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --border: rgba(255,255,255,0.08);
+            --primary: #153e84;
+            --accent: #2563eb;
+            --danger: #dc2626;
+        }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; min-height: 100%; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: radial-gradient(circle at top, rgba(37,99,235,0.14), transparent 32%), var(--bg); color: var(--text); }
+        body { padding: 20px; display: flex; justify-content: center; align-items: flex-start; }
+        .app { width: min(100%, 460px); display: grid; gap: 18px; }
+        .main-card, .extra-card { background: rgba(7,8,15,0.96); border: 1px solid var(--border); border-radius: 32px; padding: 22px; box-shadow: 0 30px 70px rgba(0,0,0,0.35); }
+        .header { text-align: center; margin-bottom: 20px; }
+        .brand { font-size: clamp(1.75rem, 4vw, 2.4rem); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+        .info-block { display: grid; gap: 12px; padding: 18px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-bottom: 18px; }
+        .info-row { display: flex; justify-content: space-between; gap: 12px; font-size: 0.95rem; color: var(--muted); }
+        .info-row span:last-child { color: var(--text); font-weight: 700; }
+        .ptt-button { width: min(100%, 260px); aspect-ratio: 1/1; margin: 0 auto 18px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; border: 2px solid rgba(255,255,255,0.12); background: linear-gradient(180deg, #0f1d44, #05236a); color: #fff; font-size: 1.35rem; font-weight: 800; text-transform: uppercase; box-shadow: 0 18px 45px rgba(0,0,0,0.32); transition: transform .15s ease, background .15s ease, border-color .15s ease; }
+        .ptt-button.btn-danger { background: linear-gradient(180deg, #7c1318, #b91c1c); border-color: rgba(248,113,113,0.35); }
+        .ptt-button:active { transform: scale(0.98); }
+        .actions-row { display: flex; justify-content: center; gap: 12px; margin-bottom: 18px; }
+        .photo-btn { padding: 14px 18px; border-radius: 18px; border: 1px solid var(--border); background: rgba(255,255,255,0.06); color: #fff; font-weight: 700; display: inline-flex; align-items: center; gap: 10px; }
+        .status-text { text-align: center; color: var(--muted); font-size: 0.95rem; margin-bottom: 14px; }
+        .presence-card { background: rgba(255,255,255,0.025); border: 1px solid var(--border); border-radius: 26px; padding: 16px; margin-bottom: 16px; }
+        .presence-title { font-size: 0.95rem; color: var(--muted); margin-bottom: 12px; }
+        .presence-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+        .presence-list li { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 18px; padding: 14px 16px; color: #fff; display: flex; align-items: center; gap: 10px; }
+        .presence-list li::before { content: '👤'; }
+        .footer-actions { display: grid; gap: 12px; }
+        .btn-connect, .btn-disconnect { width: 100%; padding: 14px 18px; border-radius: 18px; border: 1px solid transparent; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+        .btn-connect { background: rgba(255,255,255,0.06); color: #fff; border-color: rgba(255,255,255,0.1); }
+        .btn-disconnect { background: #991b1b; color: #fff; }
+        .extra-card h2 { margin: 0; font-size: 1rem; color: #fff; }
+        .section { display: grid; gap: 12px; }
+        .section label { display: grid; gap: 8px; font-size: 0.9rem; color: var(--muted); }
+        .section input[type="text"], .section input[type="number"], .section select { width: 100%; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 14px 16px; background: rgba(255,255,255,0.04); color: #fff; }
+        .section input[type="file"] { display: none; }
+        .section button { width: 100%; padding: 14px 16px; border-radius: 16px; border: none; background: var(--accent); color: #fff; font-weight: 700; }
+        .section .btn-secondary { background: #334155; }
+        .note { color: var(--muted); font-size: 0.9rem; margin: 0; }
+        .list, .image-gallery { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+        .list li, .image-item { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 14px; color: #e2e8f0; }
+        .image-item img { width: 100%; border-radius: 14px; object-fit: cover; max-height: 280px; }
+        .btn-primary { background: var(--accent); }
+        .btn-secondary { background: #334155; }
+        .btn-danger { background: var(--danger); }
+        button:hover:not(:disabled) { opacity: 0.95; }
+        @media (max-width: 420px) {
+            body { padding: 14px; }
+            .main-card, .extra-card { padding: 18px; }
+            .ptt-button { width: 100%; max-width: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <section class="main-card">
+            <div class="header">
+                <div class="brand">Rádio Vigível</div>
+            </div>
+
+            <section id="entryPanel" class="panel">
+                <div class="info-block">
+                    <label>
+                        Nome
+                        <input id="userName" type="text" placeholder="Seu nome" autocomplete="off" />
+                    </label>
+                    <label>
+                        Sala
+                        <select id="roomSelect">
+                            <option value="Vigivel N2">Vigivel N2</option>
+                            <option value="Monitoramento/Tatico">Monitoramento/Tatico</option>
+                            <option value="Portaria">Portaria</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="footer-actions">
+                    <button id="connectBtn" type="button" class="btn-connect">Entrar na sala</button>
+                </div>
+            </section>
+
+            <section id="pttPanel" class="panel" style="display:none;">
+                <div class="info-block">
+                    <div class="info-row"><span>Sala:</span><span id="roomTitle">Sala PTT</span></div>
+                    <div class="info-row"><span>Usuário:</span><span id="userNameLabel">---</span></div>
+                </div>
+
+                <div class="actions-row">
+                    <span id="pttStatus" class="status disconnected">desconectado</span>
+                    <button id="disconnectBtn" type="button" class="btn-disconnect">Desligar</button>
+                    <button id="listenBtn" type="button" class="photo-btn">Escutar OFF</button>
+                </div>
+
+                <button id="pttBtn" type="button" class="ptt-button btn-secondary" disabled>PTT</button>
+                <div class="actions-row">
+                    <button id="photoBtn" type="button" class="photo-btn">📷 FOTO</button>
+                </div>
+                <p id="pttNote" class="status-text">Segure o botão PTT para sinalizar que você está falando.</p>
+                <p id="clientMessage" class="status-text">Pronto para transmitir</p>
+            </section>
+        </section>
+
+        <section class="extra-card">
+            <div class="section">
+                <h2>Enviar mensagem</h2>
+                <label>
+                    Mensagem
+                    <input id="messageInput" type="text" placeholder="Digite uma mensagem..." />
+                </label>
+                <button id="sendTextBtn" type="button" class="btn-primary" disabled>Enviar mensagem</button>
+            </div>
+
+            <div class="section">
+                <h2>Enviar foto</h2>
+                <input id="imageInput" type="file" accept="image/*" />
+                <button id="sendImageBtn" type="button" class="btn-primary" disabled>Enviar foto</button>
+                <p class="note">A imagem será transmitida para todos na sala atual.</p>
+                <ul id="imageGallery" class="list image-gallery">
+                    <li>Nenhuma imagem recebida ainda.</li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <h2>Enviar localização</h2>
+                <label>
+                    Latitude
+                    <input id="latInput" type="number" step="any" placeholder="-23.550520" />
+                </label>
+                <label>
+                    Longitude
+                    <input id="lngInput" type="number" step="any" placeholder="-46.633308" />
+                </label>
+                <button id="locationBtn" type="button" class="btn-secondary" disabled>Enviar localização</button>
+                <p class="note">Use valores reais se disponível ou teste com coordenadas de exemplo.</p>
+            </div>
+
+            <div class="section">
+                <h2>Mensagens</h2>
+                <ul id="messageLog" class="list">
+                    <li>Nenhuma mensagem recebida ainda.</li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <h2>Usuários na sala</h2>
+                <ul id="presenceList" class="presence-list">
+                    <li>Nenhum usuário conectado...</li>
+                </ul>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const entryPanel = document.getElementById('entryPanel');
+        const pttPanel = document.getElementById('pttPanel');
+        const roomTitle = document.getElementById('roomTitle');
+        const userNameInput = document.getElementById('userName');
+        const roomSelect = document.getElementById('roomSelect');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const listenBtn = document.getElementById('listenBtn');
+        const locationBtn = document.getElementById('locationBtn');
+        const pttBtn = document.getElementById('pttBtn');
+        const photoBtn = document.getElementById('photoBtn');
+        const imageInput = document.getElementById('imageInput');
+        const sendImageBtn = document.getElementById('sendImageBtn');
+        const messageInput = document.getElementById('messageInput');
+        const sendTextBtn = document.getElementById('sendTextBtn');
+        const messageLog = document.getElementById('messageLog');
+        const messageGallery = document.getElementById('imageGallery');
+        const pttStatus = document.getElementById('pttStatus');
+        const clientMessage = document.getElementById('clientMessage');
+        const presenceList = document.getElementById('presenceList');
+        const latInput = document.getElementById('latInput');
+        const lngInput = document.getElementById('lngInput');
+        const userNameLabel = document.getElementById('userNameLabel');
+
+        let socket = null;
+        let currentRoom = '';
+        let currentName = '';
+        let isPttActive = false;
+        let listenEnabled = false;
+        let audioContext = null;
+        let audioStream = null;
+        let mediaStreamSource = null;
+        let scriptProcessor = null;
+        let isRecordingAudio = false;
+
+        function setStatus(text, state = 'disconnected') {
+            pttStatus.textContent = text;
+            pttStatus.className = 'status ' + state;
+        }
+
+        function setMessage(text, error = false) {
+            clientMessage.textContent = text;
+            clientMessage.className = error ? 'note error' : 'note';
+        }
+
+        function setConnected(isConnected) {
+            entryPanel.style.display = isConnected ? 'none' : 'block';
+            pttPanel.style.display = isConnected ? 'block' : 'none';
+            connectBtn.disabled = isConnected;
+            disconnectBtn.disabled = !isConnected;
+            listenBtn.disabled = !isConnected;
+            locationBtn.disabled = !isConnected;
+            pttBtn.disabled = !isConnected;
+            imageInput.disabled = !isConnected;
+            sendImageBtn.disabled = !isConnected || !imageInput.files.length;
+            sendTextBtn.disabled = !isConnected || !messageInput.value.trim();
+            userNameInput.disabled = isConnected;
+            roomSelect.disabled = isConnected;
+            if (!isConnected) {
+                if (isRecordingAudio) {
+                    stopAudioRecording();
+                }
+                setPttState(false);
+                listenEnabled = false;
+                listenBtn.textContent = 'Escutar OFF';
+                roomTitle.textContent = 'Sala PTT';
+            }
+            updateAudioButtonState();
+        }
+
+        function setPttState(active) {
+            isPttActive = active;
+            pttBtn.textContent = active ? 'Falando...' : 'PTT';
+            pttBtn.classList.toggle('btn-danger', active);
+            pttBtn.classList.toggle('btn-secondary', !active);
+        }
+
+        function addImageToGallery({ name, filename, mimeType, data }) {
+            if (!name || !data || !mimeType) return;
+            const li = document.createElement('li');
+            li.className = 'image-item';
+            li.innerHTML = `
+                <strong>${name} enviou:</strong>
+                <div>${filename || 'imagem'}</div>
+                <img src="data:${mimeType};base64,${data}" alt="Imagem enviada por ${name}" />
+            `;
+            if (messageGallery.children.length === 1 && messageGallery.firstElementChild.textContent.includes('Nenhuma imagem')) {
+                messageGallery.innerHTML = '';
+            }
+            messageGallery.prepend(li);
+            addMessageToLog({ name, text: 'enviou uma imagem', type: 'image' });
+        }
+
+        function addAudioMessage({ name, data }) {
+            if (!name || !data) return;
+            const li = document.createElement('li');
+            li.textContent = `${name} enviou áudio`;
+            messageLog.prepend(li);
+            addMessageToLog({ name, text: 'enviou áudio', type: 'audio' });
+
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioContext.state === 'suspended') {
+                audioContext.resume().catch(() => {});
+            }
+            const float32Array = pcm16ToFloat32(new Uint8Array(base64ToArrayBuffer(data)));
+            const buffer = audioContext.createBuffer(1, float32Array.length, 16000);
+            buffer.getChannelData(0).set(float32Array);
+            const source = audioContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(audioContext.destination);
+            source.start();
+        }
+
+        function pcm16ToFloat32(uint8Array) {
+            const length = uint8Array.length / 2;
+            const float32 = new Float32Array(length);
+            const dataView = new DataView(uint8Array.buffer);
+            for (let i = 0; i < length; i++) {
+                let int16 = dataView.getInt16(i * 2, true);
+                float32[i] = int16 / 32768;
+            }
+            return float32;
+        }
+
+        function float32ToPCM16(float32Array) {
+            const buffer = new ArrayBuffer(float32Array.length * 2);
+            const view = new DataView(buffer);
+            for (let i = 0; i < float32Array.length; i++) {
+                let s = Math.max(-1, Math.min(1, float32Array[i]));
+                view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+            }
+            return new Uint8Array(buffer);
+        }
+
+        function downsampleBuffer(buffer, inputSampleRate, outputSampleRate) {
+            if (outputSampleRate === inputSampleRate) return buffer;
+            const ratio = inputSampleRate / outputSampleRate;
+            const newLength = Math.round(buffer.length / ratio);
+            const result = new Float32Array(newLength);
+            let offsetResult = 0;
+            let offsetBuffer = 0;
+            while (offsetResult < newLength) {
+                const nextOffsetBuffer = Math.round((offsetResult + 1) * ratio);
+                let accum = 0;
+                let count = 0;
+                for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
+                    accum += buffer[i];
+                    count++;
+                }
+                result[offsetResult] = count ? accum / count : 0;
+                offsetResult++;
+                offsetBuffer = nextOffsetBuffer;
+            }
+            return result;
+        }
+
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const chunkSize = 0x8000;
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+                binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+            }
+            return btoa(binary);
+        }
+
+        function addMessageToLog({ name, text, type }) {
+            const li = document.createElement('li');
+            const displayText = type === 'message'
+                ? `${name}: ${text}`
+                : type === 'audio'
+                    ? `${name} enviou áudio`
+                    : `${name}: ${text}`;
+            li.textContent = displayText;
+            if (messageLog.children.length === 1 && messageLog.firstElementChild.textContent.includes('Nenhuma mensagem')) {
+                messageLog.innerHTML = '';
+            }
+            messageLog.prepend(li);
+            if (listenEnabled && type === 'message') {
+                speakText(displayText);
+            }
+        }
+
+        function speakText(text) {
+            if (!window.speechSynthesis) return;
+            const utterance = new SpeechSynthesisUtterance(text);
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function renderPresence(users) {
+            presenceList.innerHTML = '';
+            if (!Array.isArray(users) || users.length === 0) {
+                presenceList.innerHTML = '<li>Nenhum usuário conectado...</li>';
+                return;
+            }
+            users.forEach(user => {
+                const li = document.createElement('li');
+                const text = `${user.name || 'sem nome'}${user.isTalking ? ' (falando)' : ''}${typeof user.lat === 'number' && typeof user.lng === 'number' ? ' — ' + user.lat.toFixed(6) + ', ' + user.lng.toFixed(6) : ''}`;
+                li.textContent = text;
+                presenceList.appendChild(li);
+            });
+        }
+
+        function connect() {
+            const name = userNameInput.value.trim();
+            const room = roomSelect.value;
+            if (!name) {
+                setMessage('Informe seu nome antes de conectar.', true);
+                return;
+            }
+
+            currentName = name;
+            currentRoom = room;
+
+            const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+            socket = new WebSocket(proto + '://' + location.host);
+
+            socket.addEventListener('open', () => {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                setStatus('conectado', 'connected');
+                setConnected(true);
+                roomTitle.textContent = room;
+                userNameLabel.textContent = currentName;
+                setMessage('Conectado em ' + room + '.');
+                socket.send(JSON.stringify({ type: 'register', name, room, peerId: name + '_' + Date.now() }));
+            });
+
+            socket.addEventListener('message', (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                            if (data.type === 'presence') {
+                        renderPresence(data.users || []);
+                    } else if (data.type === 'room_cleared') {
+                        setMessage('A sala foi limpa pelo servidor.', true);
+                    } else if (data.type === 'duplicate_login') {
+                        setMessage('Conexão substituída por outra sessão.', true);
+                        socket.close();
+                    } else if (data.type === 'image') {
+                        addImageToGallery(data);
+                    } else if (data.type === 'message') {
+                        addMessageToLog({ name: data.name || 'Desconhecido', text: data.text || '', type: 'message' });
+                    } else if (data.type === 'audio') {
+                        addAudioMessage(data);
+                    }
+                } catch (err) {
+                    console.warn('Erro parsing message', err);
+                }
+            });
+
+            socket.addEventListener('close', () => {
+                setStatus('desconectado', 'disconnected');
+                setConnected(false);
+                setMessage('Desconectado.');
+                renderPresence([]);
+                imageInput.value = '';
+                updateImageButtonState();
+                socket = null;
+            });
+
+            socket.addEventListener('error', () => {
+                setStatus('erro', 'error');
+                setMessage('Erro na conexão WebSocket.', true);
+            });
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.close();
+            }
+        }
+
+        function sendLocation() {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                setMessage('Conecte-se antes de enviar a localização.', true);
+                return;
+            }
+            const lat = Number(latInput.value);
+            const lng = Number(lngInput.value);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+                setMessage('Informe latitude e longitude válidas.', true);
+                return;
+            }
+            socket.send(JSON.stringify({ type: 'location_update', lat, lng }));
+            setMessage('Localização enviada: ' + lat.toFixed(6) + ', ' + lng.toFixed(6) + '.');
+        }
+
+        function sendTalkingState(active) {
+            if (!socket || socket.readyState !== WebSocket.OPEN) return;
+            socket.send(JSON.stringify({ type: 'talking_state', isTalking: active }));
+            setPttState(active);
+        }
+
+        function sendText() {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                setMessage('Conecte-se antes de enviar a mensagem.', true);
+                return;
+            }
+            const text = messageInput.value.trim();
+            if (!text) {
+                setMessage('Digite uma mensagem antes de enviar.', true);
+                return;
+            }
+            socket.send(JSON.stringify({
+                type: 'message',
+                name: currentName,
+                room: currentRoom,
+                text,
+            }));
+            addMessageToLog({ name: 'Você', text, type: 'message' });
+            messageInput.value = '';
+            updateSendTextButtonState();
+        }
+
+        function sendImage() {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                setMessage('Conecte-se antes de enviar a imagem.', true);
+                return;
+            }
+            const file = imageInput.files[0];
+            if (!file) {
+                setMessage('Selecione uma imagem antes de enviar.', true);
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                const base64 = reader.result.split(',')[1];
+                socket.send(JSON.stringify({
+                    type: 'image',
+                    name: currentName,
+                    room: currentRoom,
+                    filename: file.name,
+                    mimeType: file.type,
+                    data: base64,
+                }));
+                setMessage('Imagem enviada: ' + file.name);
+            };
+            reader.onerror = () => setMessage('Falha ao ler a imagem.', true);
+            reader.readAsDataURL(file);
+        }
+
+        async function toggleAudioRecording() {
+            if (isRecordingAudio) {
+                stopAudioRecording();
+                return;
+            }
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                setMessage('Navegador não suporta gravação de áudio.', true);
+                return;
+            }
+
+            setMessage('Solicitando permissão de microfone...');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                await audioContext.resume().catch(() => {});
+
+                audioStream = stream;
+                mediaStreamSource = audioContext.createMediaStreamSource(stream);
+                scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+                scriptProcessor.onaudioprocess = (event) => {
+                    if (!isRecordingAudio || !socket || socket.readyState !== WebSocket.OPEN) return;
+                    const inputData = event.inputBuffer.getChannelData(0);
+                    const downsampled = downsampleBuffer(inputData, audioContext.sampleRate, 16000);
+                    const pcm16 = float32ToPCM16(downsampled);
+                    const base64 = arrayBufferToBase64(pcm16.buffer);
+                    socket.send(JSON.stringify({
+                        type: 'audio',
+                        name: currentName,
+                        room: currentRoom,
+                        data: base64,
+                    }));
+                };
+                mediaStreamSource.connect(scriptProcessor);
+                scriptProcessor.connect(audioContext.destination);
+                isRecordingAudio = true;
+                setMessage('Gravando áudio...');
+            } catch (error) {
+                console.error('Erro ao solicitar microfone:', error);
+                setMessage('Permissão de microfone negada ou erro de gravação. Verifique as configurações do navegador.', true);
+            }
+        }
+
+        function stopAudioRecording() {
+            isRecordingAudio = false;
+            setMessage('Gravação parada.');
+            if (scriptProcessor) {
+                scriptProcessor.disconnect();
+                scriptProcessor.onaudioprocess = null;
+                scriptProcessor = null;
+            }
+            if (mediaStreamSource) {
+                mediaStreamSource.disconnect();
+                mediaStreamSource = null;
+            }
+            if (audioStream) {
+                audioStream.getTracks().forEach(track => track.stop());
+                audioStream = null;
+            }
+        }
+
+        function updateImageButtonState() {
+            sendImageBtn.disabled = !socket || socket.readyState !== WebSocket.OPEN || !imageInput.files.length;
+        }
+
+        function updateAudioButtonState() {
+            return;
+        }
+
+        function updateSendTextButtonState() {
+            sendTextBtn.disabled = !socket || socket.readyState !== WebSocket.OPEN || !messageInput.value.trim();
+        }
+
+        connectBtn.addEventListener('click', connect);
+        disconnectBtn.addEventListener('click', disconnect);
+        listenBtn.addEventListener('click', () => {
+            listenEnabled = !listenEnabled;
+            listenBtn.textContent = listenEnabled ? 'Escutar ON' : 'Escutar OFF';
+        });
+        locationBtn.addEventListener('click', sendLocation);
+        imageInput.addEventListener('change', () => {
+            updateImageButtonState();
+            updateSendTextButtonState();
+        });
+        sendTextBtn.addEventListener('click', sendText);
+        sendImageBtn.addEventListener('click', sendImage);
+        photoBtn.addEventListener('click', () => imageInput.click());
+        pttBtn.addEventListener('pointerdown', () => {
+            sendTalkingState(true);
+            toggleAudioRecording();
+        });
+        window.addEventListener('pointerup', () => {
+            sendTalkingState(false);
+            if (isRecordingAudio) stopAudioRecording();
+        });
+        messageInput.addEventListener('input', updateSendTextButtonState);
+    </script>
+</body>
+</html>

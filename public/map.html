@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Mapa - PTT</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>html,body,#map{height:100%;margin:0;padding:0}body{font-family:Inter,system-ui,Arial,sans-serif}</style>
+</head>
+<body>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map', { zoomControl: true, attributionControl: false }).setView([-15.7801, -47.9292], 4);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+        const markersById = new Map();
+
+        function makeId(loc) {
+            if (loc.name) return `${loc.name}::${loc.room || ''}`;
+            return `${loc.lat}:${loc.lng}`;
+        }
+
+        function applyLocations(locations) {
+            const seen = new Set();
+            if (!Array.isArray(locations)) locations = [];
+
+            locations.forEach(loc => {
+                if (typeof loc.lat !== 'number' || typeof loc.lng !== 'number') return;
+                const id = makeId(loc);
+                seen.add(id);
+
+                if (markersById.has(id)) {
+                    const marker = markersById.get(id);
+                    marker.setLatLng([loc.lat, loc.lng]);
+                    marker.getPopup().setContent('<strong>' + (loc.name || 'sem nome') + '</strong><br>' + (loc.room || ''));
+                } else {
+                    const m = L.marker([loc.lat, loc.lng]).addTo(map);
+                    m.bindPopup('<strong>' + (loc.name || 'sem nome') + '</strong><br>' + (loc.room || ''));
+                    markersById.set(id, m);
+                }
+            });
+
+            for (const id of Array.from(markersById.keys())) {
+                if (!seen.has(id)) {
+                    const m = markersById.get(id);
+                    map.removeLayer(m);
+                    markersById.delete(id);
+                }
+            }
+
+            const all = Array.from(markersById.values()).map(m => m.getLatLng());
+            if (all.length) {
+                const bounds = all.map(p => [p.lat, p.lng]);
+                map.fitBounds(bounds, { maxZoom: 12, padding: [24, 24] });
+            }
+        }
+
+        async function fetchLocations() {
+            try {
+                const res = await fetch('/locations');
+                if (!res.ok) throw new Error('Falha ao obter localizações');
+                const data = await res.json();
+                applyLocations(data.userLocations || []);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function initRealtime() {
+            try {
+                const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+                const socket = new WebSocket(proto + '://' + location.host);
+
+                socket.addEventListener('open', () => {
+                    socket.send(JSON.stringify({ type: 'map_subscribe' }));
+                });
+
+                socket.addEventListener('message', (ev) => {
+                    try {
+                        const d = JSON.parse(ev.data);
+                        if (d.type === 'locations') {
+                            applyLocations(d.userLocations || []);
+                        }
+                    } catch (err) { }
+                });
+
+                socket.addEventListener('close', () => {
+                    setTimeout(initRealtime, 3000);
+                });
+
+                socket.addEventListener('error', () => socket.close());
+            } catch (e) {
+                // ignore and rely on polling
+            }
+        }
+
+        initRealtime();
+        fetchLocations();
+        setInterval(fetchLocations, 5000);
+    </script>
+</body>
+</html>
