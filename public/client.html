@@ -4,399 +4,125 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cliente Web PTT</title>
-    <style>
-        :root {
-            color-scheme: dark;
-            --bg: #0c1327;
-            --surface: rgba(15, 22, 45, 0.96);
-            --surface-soft: rgba(255, 255, 255, 0.04);
-            --surface-strong: rgba(255, 255, 255, 0.08);
-            --text: #eef2ff;
-            --muted: #94a3b8;
-            --border: rgba(148, 163, 184, 0.18);
-            --primary: #60a5fa;
-            --accent: #38bdf8;
-            --danger: #f87171;
-            --success: #34d399;
-        }
-
-        * { box-sizing: border-box; }
-
-        html, body {
-            margin: 0;
-            min-height: 100%;
-            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.14), transparent 22%),
-                        linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(12, 19, 39, 1));
-            color: var(--text);
-        }
-
-        body {
-            padding: 28px;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-        }
-
-        .app {
-            width: min(100%, 1180px);
-            display: grid;
-            gap: 24px;
-            grid-template-columns: 1.5fr 1fr;
-        }
-
-        .main-card,
-        .extra-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 32px;
-            padding: 28px;
-            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
-        }
-
-        .page-header {
-            display: grid;
-            gap: 10px;
-            margin-bottom: 24px;
-        }
-
-        .brand {
-            font-size: clamp(2rem, 3.5vw, 2.8rem);
-            font-weight: 900;
-            letter-spacing: 0.16em;
-            text-transform: uppercase;
-            line-height: 1;
-        }
-
-        .subtitle {
-            margin: 0;
-            color: var(--muted);
-            max-width: 640px;
-            line-height: 1.6;
-        }
-
-        .panel {
-            display: grid;
-            gap: 22px;
-        }
-
-        .info-block {
-            display: grid;
-            gap: 16px;
-            padding: 20px 0;
-            border-top: 1px solid var(--border);
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 12px;
-        }
-
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            font-size: 0.95rem;
-            color: var(--muted);
-        }
-
-        .info-row span:last-child {
-            color: var(--text);
-            font-weight: 700;
-        }
-
-        .status {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 10px 16px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.06);
-            color: var(--text);
-            font-weight: 700;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-        }
-
-        .status.online {
-            color: var(--success);
-            background: rgba(52, 211, 153, 0.15);
-        }
-
-        .status.disconnected {
-            color: var(--danger);
-            background: rgba(248, 113, 113, 0.14);
-        }
-
-        .ptt-button {
-            width: min(100%, 260px);
-            aspect-ratio: 1/1;
-            margin: 0 auto;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 999px;
-            border: 1px solid rgba(255,255,255,0.12);
-            background: linear-gradient(180deg, #192f5f, #0a193d);
-            color: #fff;
-            font-size: 1.35rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            box-shadow: 0 24px 55px rgba(0,0,0,0.22);
-            transition: transform .15s ease, background .15s ease, border-color .15s ease;
-        }
-
-        .ptt-button.btn-danger {
-            background: linear-gradient(180deg, #7c1318, #b91c1c);
-            border-color: rgba(248,113,113,0.35);
-        }
-
-        .ptt-button:active,
-        .btn:hover:not(:disabled) {
-            transform: translateY(-1px);
-        }
-
-        .actions-row {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 12px;
-        }
-
-        .btn,
-        .photo-btn,
-        .section button,
-        .btn-connect,
-        .btn-disconnect {
-            border-radius: 18px;
-            border: 1px solid transparent;
-            font-weight: 700;
-            cursor: pointer;
-            transition: filter .15s ease, transform .15s ease, opacity .15s ease;
-        }
-
-        .btn {
-            min-width: 140px;
-            padding: 14px 18px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; }
-        .btn-secondary { background: rgba(255,255,255,0.08); color: #fff; }
-        .btn-danger { background: var(--danger); color: #fff; }
-        .btn-connect { background: linear-gradient(135deg, #2563eb, #38bdf8); color: #fff; }
-        .btn-disconnect { background: #b91c1c; color: #fff; }
-
-        .photo-btn {
-            padding: 14px 20px;
-            border-radius: 18px;
-            border: 1px solid var(--border);
-            background: rgba(255,255,255,0.08);
-            color: #fff;
-            font-weight: 700;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .status-text,
-        .note {
-            text-align: center;
-            color: var(--muted);
-            font-size: 0.95rem;
-            margin: 0;
-        }
-
-        .section {
-            display: grid;
-            gap: 14px;
-        }
-
-        .section h2 {
-            margin: 0;
-            font-size: 1.05rem;
-            color: #f8fafc;
-        }
-
-        .section label {
-            display: grid;
-            gap: 10px;
-            font-size: 0.92rem;
-            color: var(--muted);
-        }
-
-        .section input[type="text"],
-        .section input[type="number"],
-        .section select {
-            width: 100%;
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 16px;
-            padding: 14px 16px;
-            background: rgba(255,255,255,0.05);
-            color: #fff;
-        }
-
-        .section input[type="file"] { display: none; }
-
-        .list,
-        .image-gallery,
-        .presence-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            display: grid;
-            gap: 12px;
-        }
-
-        .list li,
-        .image-item,
-        .presence-list li {
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 18px;
-            padding: 16px;
-            color: #e2e8f0;
-        }
-
-        .image-item img {
-            width: 100%;
-            border-radius: 14px;
-            object-fit: cover;
-            max-height: 300px;
-        }
-
-        .image-item strong {
-            display: block;
-            margin-bottom: 8px;
-            color: var(--text);
-        }
-
-        .presence-list li::before {
-            content: '👤';
-            margin-right: 10px;
-        }
-
-        .footer-actions {
-            display: grid;
-            gap: 12px;
-        }
-
-        .note.error {
-            color: var(--danger);
-            font-weight: 700;
-            text-align: center;
-        }
-
-        .extra-card h2 {
-            margin: 0;
-            color: #fff;
-        }
-
-        @media (max-width: 980px) {
-            .app { grid-template-columns: 1fr; }
-        }
-
-        @media (max-width: 500px) {
-            body { padding: 16px; }
-            .main-card, .extra-card { padding: 20px; }
-            .ptt-button { width: 100%; max-width: none; }
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .btn {
+                @apply inline-flex items-center justify-center gap-2 rounded-2xl border border-transparent font-semibold transition duration-150 ease-in-out;
+            }
+            .btn-primary { @apply bg-cyan-500 text-slate-950 hover:bg-cyan-400; }
+            .btn-secondary { @apply bg-slate-700 text-slate-100 hover:bg-slate-600; }
+            .btn-danger { @apply bg-rose-500 text-white hover:bg-rose-400; }
+            .btn-connect { @apply bg-sky-600 text-white hover:bg-sky-500; }
+            .btn-disconnect { @apply bg-rose-600 text-white hover:bg-rose-500; }
+            .photo-btn { @apply inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-700/80 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-white/10; }
+            .ptt-button { @apply w-full max-w-[260px] aspect-square mx-auto rounded-full border border-white/10 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 text-xl font-black uppercase text-white shadow-[0_24px_55px_rgba(0,0,0,0.22)] transition duration-150 ease-in-out; }
+            .ptt-button.btn-danger { @apply from-rose-700 via-rose-600 to-rose-700 border-rose-500/30; }
+            .status { @apply inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-100 bg-white/5; }
+            .status.online { @apply bg-emerald-500/15 text-emerald-300; }
+            .status.disconnected { @apply bg-rose-500/15 text-rose-300; }
+            .list-item { @apply rounded-2xl border border-slate-700/60 bg-slate-950/75 p-4 text-slate-100; }
+            .image-item img { @apply w-full rounded-xl object-cover max-h-[300px]; }
         }
     </style>
+    <style>
+        input[type="file"] { display: none; }
+    </style>
 </head>
-<body>
-    <div class="app">
-        <section class="main-card">
-            <div class="page-header">
-                <div class="brand">Rádio Vigível</div>
-                <p class="subtitle">Acesse a sala PTT com controle de voz, mensagens, localização e envio de imagens com um painel intuitivo e claro.</p>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+    <div class="app grid gap-6 xl:grid-cols-[1.5fr_1fr] w-full max-w-[1180px]">
+        <section class="main-card bg-slate-900/95 border border-slate-700/80 rounded-[32px] p-8 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+            <div class="page-header grid gap-3 mb-6">
+                <div class="brand text-4xl md:text-5xl font-black uppercase tracking-[0.18em]">Rádio Vigível</div>
+                <p class="subtitle max-w-2xl text-slate-400 leading-7">Acesse a sala PTT com controle de voz, mensagens, localização e envio de imagens com um painel intuitivo e claro.</p>
             </div>
 
-            <section id="entryPanel" class="panel">
-                <div class="info-block">
-                    <label>
+            <section id="entryPanel" class="panel grid gap-6">
+                <div class="info-block grid gap-5 border-y border-slate-700/70 py-5">
+                    <label class="grid gap-3 text-sm text-slate-400">
                         Nome
-                        <input id="userName" type="text" placeholder="Seu nome" autocomplete="off" />
+                        <input id="userName" type="text" placeholder="Seu nome" autocomplete="off" class="w-full rounded-2xl border border-slate-700/80 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/15 outline-none" />
                     </label>
-                    <label>
+                    <label class="grid gap-3 text-sm text-slate-400">
                         Sala
-                        <select id="roomSelect">
+                        <select id="roomSelect" class="w-full rounded-2xl border border-slate-700/80 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/15 outline-none">
                             <option value="Vigivel N2">Vigivel N2</option>
                             <option value="Monitoramento/Tatico">Monitoramento/Tatico</option>
                             <option value="Portaria">Portaria</option>
                         </select>
                     </label>
                 </div>
-                <div class="footer-actions">
-                    <button id="connectBtn" type="button" class="btn-connect">Entrar na sala</button>
+                <div class="footer-actions grid gap-4">
+                    <button id="connectBtn" type="button" class="btn btn-connect w-full px-5 py-3">Entrar na sala</button>
                 </div>
             </section>
 
-            <section id="pttPanel" class="panel" style="display:none;">
-                <div class="info-block">
-                    <div class="info-row"><span>Sala:</span><span id="roomTitle">Sala PTT</span></div>
-                    <div class="info-row"><span>Usuário:</span><span id="userNameLabel">---</span></div>
+            <section id="pttPanel" class="panel hidden grid gap-6">
+                <div class="info-block grid gap-4 border-y border-slate-700/70 py-5">
+                    <div class="info-row flex justify-between gap-4 text-sm text-slate-400"><span>Sala:</span><span id="roomTitle" class="text-slate-100 font-semibold">Sala PTT</span></div>
+                    <div class="info-row flex justify-between gap-4 text-sm text-slate-400"><span>Usuário:</span><span id="userNameLabel" class="text-slate-100 font-semibold">---</span></div>
                 </div>
 
-                <div class="actions-row">
+                <div class="actions-row flex flex-wrap items-center justify-between gap-3">
                     <span id="pttStatus" class="status disconnected">desconectado</span>
-                    <button id="disconnectBtn" type="button" class="btn-disconnect">Desligar</button>
+                    <button id="disconnectBtn" type="button" class="btn btn-disconnect px-5 py-3">Desligar</button>
                     <button id="listenBtn" type="button" class="photo-btn">Escutar OFF</button>
                 </div>
 
                 <button id="pttBtn" type="button" class="ptt-button btn-secondary" disabled>PTT</button>
-                <div class="actions-row">
+                <div class="actions-row flex justify-center">
                     <button id="photoBtn" type="button" class="photo-btn">📷 FOTO</button>
                 </div>
-                <p id="pttNote" class="status-text">Segure o botão PTT para sinalizar que você está falando.</p>
-                <p id="clientMessage" class="status-text">Pronto para transmitir</p>
+                <p id="pttNote" class="status-text text-center text-sm text-slate-400">Segure o botão PTT para sinalizar que você está falando.</p>
+                <p id="clientMessage" class="status-text text-center text-sm text-slate-400">Pronto para transmitir</p>
             </section>
         </section>
 
-        <section class="extra-card">
-            <div class="section">
-                <h2>Enviar mensagem</h2>
-                <label>
+        <section class="extra-card bg-slate-900/95 border border-slate-700/80 rounded-[32px] p-8 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+            <div class="section grid gap-4">
+                <h2 class="text-base font-semibold text-slate-100">Enviar mensagem</h2>
+                <label class="grid gap-3 text-sm text-slate-400">
                     Mensagem
-                    <input id="messageInput" type="text" placeholder="Digite uma mensagem..." />
+                    <input id="messageInput" type="text" placeholder="Digite uma mensagem..." class="w-full rounded-2xl border border-slate-700/80 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/15 outline-none" />
                 </label>
-                <button id="sendTextBtn" type="button" class="btn-primary" disabled>Enviar mensagem</button>
+                <button id="sendTextBtn" type="button" class="btn btn-primary w-full px-5 py-3" disabled>Enviar mensagem</button>
             </div>
 
-            <div class="section">
-                <h2>Enviar foto</h2>
-                <input id="imageInput" type="file" accept="image/*" />
-                <button id="sendImageBtn" type="button" class="btn-primary" disabled>Enviar foto</button>
-                <p class="note">A imagem será transmitida para todos na sala atual.</p>
-                <ul id="imageGallery" class="list image-gallery">
-                    <li>Nenhuma imagem recebida ainda.</li>
+            <div class="section grid gap-4 mt-6">
+                <h2 class="text-base font-semibold text-slate-100">Enviar foto</h2>
+                <input id="imageInput" type="file" accept="image/*" class="hidden-file" />
+                <button id="sendImageBtn" type="button" class="btn btn-primary w-full px-5 py-3" disabled>Enviar foto</button>
+                <p class="note text-sm text-slate-400">A imagem será transmitida para todos na sala atual.</p>
+                <ul id="imageGallery" class="list image-gallery grid gap-3">
+                    <li class="image-item list-item">Nenhuma imagem recebida ainda.</li>
                 </ul>
             </div>
 
-            <div class="section">
-                <h2>Enviar localização</h2>
-                <label>
+            <div class="section grid gap-4 mt-6">
+                <h2 class="text-base font-semibold text-slate-100">Enviar localização</h2>
+                <label class="grid gap-3 text-sm text-slate-400">
                     Latitude
-                    <input id="latInput" type="number" step="any" placeholder="-23.550520" />
+                    <input id="latInput" type="number" step="any" placeholder="-23.550520" class="w-full rounded-2xl border border-slate-700/80 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/15 outline-none" />
                 </label>
-                <label>
+                <label class="grid gap-3 text-sm text-slate-400">
                     Longitude
-                    <input id="lngInput" type="number" step="any" placeholder="-46.633308" />
+                    <input id="lngInput" type="number" step="any" placeholder="-46.633308" class="w-full rounded-2xl border border-slate-700/80 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/15 outline-none" />
                 </label>
-                <button id="locationBtn" type="button" class="btn-secondary" disabled>Enviar localização</button>
-                <p class="note">Use valores reais se disponível ou teste com coordenadas de exemplo.</p>
+                <button id="locationBtn" type="button" class="btn btn-secondary w-full px-5 py-3" disabled>Enviar localização</button>
+                <p class="note text-sm text-slate-400">Use valores reais se disponível ou teste com coordenadas de exemplo.</p>
             </div>
 
-            <div class="section">
-                <h2>Mensagens</h2>
-                <ul id="messageLog" class="list">
-                    <li>Nenhuma mensagem recebida ainda.</li>
+            <div class="section grid gap-4 mt-6">
+                <h2 class="text-base font-semibold text-slate-100">Mensagens</h2>
+                <ul id="messageLog" class="list grid gap-3">
+                    <li class="list-item">Nenhuma mensagem recebida ainda.</li>
                 </ul>
             </div>
 
-            <div class="section">
-                <h2>Usuários na sala</h2>
-                <ul id="presenceList" class="presence-list">
-                    <li>Nenhum usuário conectado...</li>
+            <div class="section grid gap-4 mt-6">
+                <h2 class="text-base font-semibold text-slate-100">Usuários na sala</h2>
+                <ul id="presenceList" class="presence-list grid gap-3">
+                    <li class="list-item">Nenhum usuário conectado...</li>
                 </ul>
             </div>
         </section>
@@ -678,6 +404,7 @@ registerProcessor('recorder-processor', RecorderProcessor);`;
 
         function addMessageToLog({ name, text, type }) {
             const li = document.createElement('li');
+            li.className = 'list-item';
             const displayText = type === 'message'
                 ? `${name}: ${text}`
                 : type === 'audio'
@@ -702,11 +429,12 @@ registerProcessor('recorder-processor', RecorderProcessor);`;
         function renderPresence(users) {
             presenceList.innerHTML = '';
             if (!Array.isArray(users) || users.length === 0) {
-                presenceList.innerHTML = '<li>Nenhum usuário conectado...</li>';
+                presenceList.innerHTML = '<li class="list-item">Nenhum usuário conectado...</li>';
                 return;
             }
             users.forEach(user => {
                 const li = document.createElement('li');
+                li.className = 'list-item';
                 const text = `${user.name || 'sem nome'}${user.isTalking ? ' (falando)' : ''}${typeof user.lat === 'number' && typeof user.lng === 'number' ? ' — ' + user.lat.toFixed(6) + ', ' + user.lng.toFixed(6) : ''}`;
                 li.textContent = text;
                 presenceList.appendChild(li);
