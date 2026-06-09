@@ -196,6 +196,7 @@
         let audioStream = null;
         let mediaStreamSource = null;
         let scriptProcessor = null;
+        let recorderNode = null;
         let isRecordingAudio = false;
 
         function setStatus(text, state = 'disconnected') {
@@ -257,26 +258,59 @@
         }
 
         function addAudioMessage({ name, data }) {
-            if (!name || !data) return;
-            const li = document.createElement('li');
-            li.textContent = `${name} enviou áudio`;
-            messageLog.prepend(li);
-            addMessageToLog({ name, text: 'enviou áudio', type: 'audio' });
 
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioContext.state === 'suspended') {
-                audioContext.resume().catch(() => {});
-            }
-            const float32Array = pcm16ToFloat32(new Uint8Array(base64ToArrayBuffer(data)));
-            const buffer = audioContext.createBuffer(1, float32Array.length, 16000);
-            buffer.getChannelData(0).set(float32Array);
-            const source = audioContext.createBufferSource();
-            source.buffer = buffer;
-            source.connect(audioContext.destination);
-            source.start();
+    if (!listenEnabled) return;
+    if (!data) return;
+
+    try {
+
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
         }
+
+        if (audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
+
+        const pcmBytes = new Uint8Array(
+            base64ToArrayBuffer(data)
+        );
+
+        const sampleCount = pcmBytes.length / 2;
+
+        const audioBuffer = audioContext.createBuffer(
+            1,
+            sampleCount,
+            16000
+        );
+
+        const channelData = audioBuffer.getChannelData(0);
+        const view = new DataView(pcmBytes.buffer);
+
+        for (let i = 0; i < sampleCount; i++) {
+            channelData[i] =
+                view.getInt16(i * 2, true) / 32768.0;
+        }
+
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioContext.destination);
+        source.start(0);
+
+        console.log(
+            'Áudio reproduzido:',
+            name,
+            pcmBytes.length,
+            'bytes'
+        );
+
+    } catch (err) {
+        console.error(
+            'Erro reproduzindo áudio:',
+            err
+        );
+    }
+}
 
         function pcm16ToFloat32(uint8Array) {
             const length = uint8Array.length / 2;
@@ -331,6 +365,32 @@
             return bytes.buffer;
         }
 
+        // registra um AudioWorklet para capturar áudio de forma moderna
+        let _workletRegistered = false;
+        async function ensureRecorderWorklet() {
+            if (_workletRegistered) return;
+            const workletCode = `class RecorderProcessor extends AudioWorkletProcessor {
+    constructor() { super(); }
+    process(inputs) {
+        const input = inputs[0];
+        if (input && input[0] && input[0].length) {
+            const float32 = new Float32Array(input[0]);
+            this.port.postMessage(float32, [float32.buffer]);
+        }
+        return true;
+    }
+}
+registerProcessor('recorder-processor', RecorderProcessor);`;
+            const blob = new Blob([workletCode], { type: 'application/javascript' });
+            const url = URL.createObjectURL(blob);
+            try {
+                await audioContext.audioWorklet.addModule(url);
+                _workletRegistered = true;
+            } finally {
+                URL.revokeObjectURL(url);
+            }
+        }
+
         function arrayBufferToBase64(buffer) {
             let binary = '';
             const bytes = new Uint8Array(buffer);
@@ -339,6 +399,41 @@
                 binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
             }
             return btoa(binary);
+        }
+
+        // Constrói um WAV (header + PCM16) a partir de bytes PCM16
+        function pcm16ToWav(pcm16Uint8, sampleRate) {
+            const pcm16 = pcm16Uint8;
+            const dataSize = pcm16.length;
+            const buffer = new ArrayBuffer(44 + dataSize);
+            const view = new DataView(buffer);
+
+            /* RIFF identifier */ writeString(view, 0, 'RIFF');
+            /* file length */ view.setUint32(4, 36 + dataSize, true);
+            /* RIFF type */ writeString(view, 8, 'WAVE');
+            /* format chunk identifier */ writeString(view, 12, 'fmt ');
+            /* format chunk length */ view.setUint32(16, 16, true);
+            /* sample format (raw) */ view.setUint16(20, 1, true);
+            /* channel count */ view.setUint16(22, 1, true);
+            /* sample rate */ view.setUint32(24, sampleRate, true);
+            /* byte rate (sampleRate * blockAlign) */ view.setUint32(28, sampleRate * 2, true);
+            /* block align (channel count * bytes per sample) */ view.setUint16(32, 2, true);
+            /* bits per sample */ view.setUint16(34, 16, true);
+            /* data chunk identifier */ writeString(view, 36, 'data');
+            /* data chunk length */ view.setUint32(40, dataSize, true);
+
+            // copy pcm16 bytes
+            const offset = 44;
+            const uint8 = new Uint8Array(buffer);
+            uint8.set(pcm16, offset);
+
+            return buffer;
+
+            function writeString(dataview, offset, str) {
+                for (let i = 0; i < str.length; i++) {
+                    dataview.setUint8(offset + i, str.charCodeAt(i));
+                }
+            }
         }
 
         function addMessageToLog({ name, text, type }) {
@@ -389,6 +484,20 @@
             currentName = name;
             currentRoom = room;
 
+            // Cria e resume o AudioContext durante o clique do usuário para garantir permissão
+            try {
+                if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                audioContext.resume().catch(() => {});
+                try {
+                    const silent = audioContext.createBuffer(1, 1, audioContext.sampleRate);
+                    const s = audioContext.createBufferSource();
+                    s.buffer = silent;
+                    s.connect(audioContext.destination);
+                    s.start(0);
+                    setTimeout(() => { try { s.disconnect(); } catch (e) {} }, 50);
+                } catch (e) { /* ignore */ }
+            } catch (e) { /* ignore */ }
+
             const proto = location.protocol === 'https:' ? 'wss' : 'ws';
             socket = new WebSocket(proto + '://' + location.host);
 
@@ -396,6 +505,19 @@
                 if (!audioContext) {
                     audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 }
+                // Tenta desbloquear o áudio imediatamente após a conexão (user gesture)
+                try {
+                    audioContext.resume().then(() => {
+                        try {
+                            const silent = audioContext.createBuffer(1, 1, audioContext.sampleRate);
+                            const s = audioContext.createBufferSource();
+                            s.buffer = silent;
+                            s.connect(audioContext.destination);
+                            s.start(0);
+                            setTimeout(() => { try { s.disconnect(); } catch (e) {} }, 50);
+                        } catch (e) { /* ignore */ }
+                    }).catch(() => {});
+                } catch (e) {}
                 setStatus('conectado', 'connected');
                 setConnected(true);
                 roomTitle.textContent = room;
@@ -538,22 +660,22 @@
 
                 audioStream = stream;
                 mediaStreamSource = audioContext.createMediaStreamSource(stream);
-                scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
-                scriptProcessor.onaudioprocess = (event) => {
-                    if (!isRecordingAudio || !socket || socket.readyState !== WebSocket.OPEN) return;
-                    const inputData = event.inputBuffer.getChannelData(0);
-                    const downsampled = downsampleBuffer(inputData, audioContext.sampleRate, 16000);
-                    const pcm16 = float32ToPCM16(downsampled);
-                    const base64 = arrayBufferToBase64(pcm16.buffer);
-                    socket.send(JSON.stringify({
-                        type: 'audio',
-                        name: currentName,
-                        room: currentRoom,
-                        data: base64,
-                    }));
+                // usa AudioWorklet para capturar áudio eficientemente
+                await ensureRecorderWorklet();
+                recorderNode = new AudioWorkletNode(audioContext, 'recorder-processor');
+                recorderNode.port.onmessage = (e) => {
+                    try {
+                        if (!isRecordingAudio || !socket || socket.readyState !== WebSocket.OPEN) return;
+                        const float32 = e.data;
+                        const downsampled = downsampleBuffer(float32, audioContext.sampleRate, 16000);
+                        const pcm16 = float32ToPCM16(downsampled);
+                        const base64 = arrayBufferToBase64(pcm16.buffer);
+                        socket.send(JSON.stringify({ type: 'audio', name: currentName, room: currentRoom, data: base64 }));
+                    } catch (err) { console.error('Erro no port.onmessage:', err); }
                 };
-                mediaStreamSource.connect(scriptProcessor);
-                scriptProcessor.connect(audioContext.destination);
+                mediaStreamSource.connect(recorderNode);
+                // conecta à saída para manter o nó ativo; não conecta o microfone direto ao destino para evitar eco
+                try { recorderNode.connect(audioContext.destination); } catch (e) { /* ignore */ }
                 isRecordingAudio = true;
                 setMessage('Gravando áudio...');
             } catch (error) {
@@ -569,6 +691,11 @@
                 scriptProcessor.disconnect();
                 scriptProcessor.onaudioprocess = null;
                 scriptProcessor = null;
+            }
+            if (recorderNode) {
+                try { recorderNode.port.onmessage = null; } catch (e) {}
+                try { recorderNode.disconnect(); } catch (e) {}
+                recorderNode = null;
             }
             if (mediaStreamSource) {
                 mediaStreamSource.disconnect();
@@ -594,10 +721,29 @@
 
         connectBtn.addEventListener('click', connect);
         disconnectBtn.addEventListener('click', disconnect);
-        listenBtn.addEventListener('click', () => {
-            listenEnabled = !listenEnabled;
-            listenBtn.textContent = listenEnabled ? 'Escutar ON' : 'Escutar OFF';
-        });
+listenBtn.addEventListener('click', async () => {
+
+    listenEnabled = !listenEnabled;
+
+    if (listenEnabled) {
+
+        if (!audioContext) {
+            audioContext = new (
+                window.AudioContext ||
+                window.webkitAudioContext
+            )();
+        }
+
+        await audioContext.resume();
+
+        listenBtn.textContent = 'Escutar ON';
+
+    } else {
+
+        listenBtn.textContent = 'Escutar OFF';
+
+    }
+});
         locationBtn.addEventListener('click', sendLocation);
         imageInput.addEventListener('change', () => {
             updateImageButtonState();
