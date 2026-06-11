@@ -145,6 +145,17 @@ wss.on('connection', (ws) => {
                 }
             }
 
+            // Chat textual (novo tipo `chat` esperado pelo app Android)
+            if (data.type === 'chat') {
+                if (ws.room) {
+                    console.log(`[Chat] ${data.name}: ${data.message} na sala ${ws.room}`);
+                    try {
+                        const out = JSON.stringify({ type: 'chat', name: data.name, message: data.message });
+                        broadcastToRoom(ws.room, out, ws);
+                    } catch (e) { /* ignore */ }
+                }
+            }
+
             if (data.type === 'message') {
                 if (ws.room) {
                     console.log(`[Mensagem] ${data.name}: ${data.text} na sala ${ws.room}`);
@@ -184,8 +195,9 @@ wss.on('connection', (ws) => {
 
             if (data.type === 'talking_state') {
                 if (ws.room && ws.userData) {
-                    ws.userData.isTalking = data.isTalking;
-                    broadcastPresence(ws.room);
+                    ws.userData.isTalking = !!data.isTalking;
+                    // Notifica só os outros membros da sala sobre quem está falando
+                    broadcastTalkingState(ws.room, ws);
                 }
             }
         } catch (e) { 
